@@ -37,6 +37,7 @@ object Copier : CoroutineScope {
         private set
 
     private var approximateStorageSize: Long = 0
+    private var approximateMirrorSize: Long = 0
 
     fun startCopy() {
         launch(Dispatchers.IO) {
@@ -64,10 +65,12 @@ object Copier : CoroutineScope {
         launch {
             status = Status.CLEARING
             deletedFilesCount = 0
-            skippedFilesCount = 0
+            totalFilesSize = 0L
             totalProgress = 0f
 
             val mirrorDir = File(GlobalParams.mirrorPath)
+            approximateMirrorSize = mirrorDir.totalSpace - mirrorDir.usableSpace
+
             clearDir(mirrorDir)
 
             if (status == Status.INTERRUPTED)
@@ -159,6 +162,12 @@ object Copier : CoroutineScope {
 
         mirrorDir.listFiles()?.forEach { mirrorFile ->
             val storageFile = getStorageFile(mirrorFile)
+
+            if (!mirrorFile.isDirectory) {
+                totalFilesSize += mirrorFile.length()
+                totalProgress = totalFilesSize.toFloat() / approximateMirrorSize.toFloat()
+            }
+
             if (!storageFile.exists()) {
                 mirrorFile.deleteRecursively()
                 deletedFilesCount++
@@ -166,8 +175,7 @@ object Copier : CoroutineScope {
             else if (mirrorFile.isDirectory) {
                 clearDir(mirrorFile)
             }
-            else
-                skippedFilesCount++
+
         }
     }
 

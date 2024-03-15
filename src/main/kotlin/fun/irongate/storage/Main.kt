@@ -8,8 +8,8 @@ import kotlin.math.log10
 
 fun main(vararg args: String) {
     val params = argToMap(args)
-    GlobalParams.storagePath = params["storage"] ?: return
-    GlobalParams.mirrorPath = params["mirror"] ?: return
+    params["storage"]?.let { GlobalParams.storagePath = it }
+    params["mirror"]?.let { GlobalParams.mirrorPath = it }
 
     StatusScreenController()
 
