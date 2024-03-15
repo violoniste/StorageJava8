@@ -36,3 +36,4 @@ build/
 
 ### Mac OS ###
 .DS_Store
+out/artifacts/StorageJava8_jar/StorageJava8.jar
