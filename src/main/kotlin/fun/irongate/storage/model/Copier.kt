@@ -57,20 +57,23 @@ object Copier : CoroutineScope {
                 return@launch
 
             status = Status.DONE
+        }
+    }
 
-//            deletedFilesCount = 0
-//            val mirrorDir = File(GlobalParams.mirrorPath)
-//            status = Status.DELETION
-//            totalProgress = 1f
-//            fileProgress = 0f
-//            currentFile = ""
-//
-//            clearDir(mirrorDir)
-//
-//            if (status == Status.INTERRUPTED)
-//                return@launch
-//
-//            status = Status.DONE
+    fun startClear() {
+        launch {
+            status = Status.CLEARING
+            deletedFilesCount = 0
+            skippedFilesCount = 0
+            totalProgress = 0f
+
+            val mirrorDir = File(GlobalParams.mirrorPath)
+            clearDir(mirrorDir)
+
+            if (status == Status.INTERRUPTED)
+                return@launch
+
+            status = Status.DONE
         }
     }
 
@@ -160,11 +163,11 @@ object Copier : CoroutineScope {
                 mirrorFile.deleteRecursively()
                 deletedFilesCount++
             }
-            else {
-                if (mirrorFile.isDirectory) {
-                    clearDir(mirrorFile)
-                }
+            else if (mirrorFile.isDirectory) {
+                clearDir(mirrorFile)
             }
+            else
+                skippedFilesCount++
         }
     }
 
@@ -179,5 +182,5 @@ object Copier : CoroutineScope {
         status = Status.INTERRUPTED
     }
 
-    enum class Status { IDLE, COPYING, DELETION, INTERRUPTED, DONE }
+    enum class Status { IDLE, COPYING, CLEARING, INTERRUPTED, DONE }
 }

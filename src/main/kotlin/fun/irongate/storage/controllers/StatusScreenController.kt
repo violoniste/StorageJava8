@@ -14,7 +14,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
-import kotlin.math.roundToInt
 import kotlin.system.exitProcess
 
 class StatusScreenController : CoroutineScope {
@@ -51,6 +50,8 @@ class StatusScreenController : CoroutineScope {
             println("Готово к запуску.")
 
             startCopy()
+
+            startClear()
         }
 
         listenConsole()
@@ -70,7 +71,11 @@ class StatusScreenController : CoroutineScope {
 
         val progress = 1 - usableSpace.toFloat() / totalSpace.toFloat()
 
-        println(getBarString(SCREEN_WIDTH, progress))
+        val builder = StringBuilder(SCREEN_WIDTH)
+        builder.append('[')
+        builder.append(getDoubleBarString(100, progress, progress))
+        builder.append(']')
+        println(builder.toString())
 
         println("${StringUtils.sizeToString(usableSpace)} из ${StringUtils.sizeToString(totalSpace)} свободно")
 
@@ -78,6 +83,7 @@ class StatusScreenController : CoroutineScope {
     }
 
     private suspend fun startCopy() {
+        println()
         println("Копирование...")
 
         Copier.startCopy()
@@ -103,24 +109,29 @@ class StatusScreenController : CoroutineScope {
         println("Объемом: ${StringUtils.sizeToString(Copier.totalFilesSize)}")
     }
 
-    private fun updateDeleteProgress() {
-        print(StringBuilder(SCREEN_WIDTH + 10)
-            .append('\r')
-            .append(getBarString(SCREEN_WIDTH / 2, Copier.totalProgress))
-            .toString())
-    }
+    private suspend fun startClear() {
+        println()
+        println("Очистка...")
 
-    private fun getBarString(width: Int, progress: Float): String {
-        val barSize = width - 2
-        val filled = (barSize * progress).roundToInt()
-        val empty = barSize - filled
+        Copier.startClear()
 
-        return StringBuilder(width)
-            .append('[')
-            .append(java.lang.String.join("", Collections.nCopies(filled, "■")))
-            .append(java.lang.String.join("", Collections.nCopies(empty, " ")))
-            .append(']')
-            .toString()
+        while (true) {
+            delay(16)
+
+            val builder = StringBuilder(SCREEN_WIDTH)
+            builder.append('\r')
+            builder.append('[')
+            builder.append(getDoubleBarString(100, Copier.totalProgress, Copier.totalProgress))
+            builder.append(']')
+            builder.append(" ${Copier.deletedFilesCount}")
+            print(builder.toString())
+
+            if (Copier.status != Copier.Status.CLEARING)
+                break
+        }
+
+        println()
+        println("Удалено: ${Copier.deletedFilesCount}")
     }
 
     private fun getDoubleBarString(width: Int, progressTop: Float, progressBot: Float): String {
