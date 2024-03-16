@@ -12,7 +12,7 @@ import java.io.FileOutputStream
 object Copier : CoroutineScope {
     override val coroutineContext = Dispatchers.IO
 
-    var status = Status.IDLE
+    var status = Status.READY
         private set
 
     var copiedFilesCount = 0
@@ -54,10 +54,7 @@ object Copier : CoroutineScope {
 
             copyDir(storageDir)
 
-            if (status == Status.INTERRUPTED)
-                return@launch
-
-            status = Status.DONE
+            status = Status.READY
         }
     }
 
@@ -73,17 +70,11 @@ object Copier : CoroutineScope {
 
             clearDir(mirrorDir)
 
-            if (status == Status.INTERRUPTED)
-                return@launch
-
-            status = Status.DONE
+            status = Status.READY
         }
     }
 
     private fun copyDir(storageDir: File) {
-        if (status == Status.INTERRUPTED)
-            return
-
         storageDir.listFiles()?.forEach { file ->
             if (file.isDirectory) {
                 val mirrorDir = getMirrorFile(file)
@@ -102,9 +93,6 @@ object Copier : CoroutineScope {
     }
 
     private fun copyFile(storageFile: File) {
-        if (status == Status.INTERRUPTED)
-            return
-
         currentFile = storageFile.path
         val mirrorFile = getMirrorFile(storageFile)
 
@@ -125,9 +113,6 @@ object Copier : CoroutineScope {
             val fileLength = storageFile.length()
             var sum = 0L
             while ((inputStream.read(buffer).also { length = it }) > 0) {
-                if (status == Status.INTERRUPTED)
-                    return
-
                 outputStream.write(buffer, 0, length)
                 sum += length
                 fileProgress = sum.toFloat() / fileLength.toFloat()
@@ -157,9 +142,6 @@ object Copier : CoroutineScope {
     }
 
     private fun clearDir(mirrorDir: File) {
-        if (status == Status.INTERRUPTED)
-            return
-
         mirrorDir.listFiles()?.forEach { mirrorFile ->
             val storageFile = getStorageFile(mirrorFile)
 
@@ -186,9 +168,5 @@ object Copier : CoroutineScope {
         return File(destination)
     }
 
-    fun stop() {
-        status = Status.INTERRUPTED
-    }
-
-    enum class Status { IDLE, COPYING, CLEARING, INTERRUPTED, DONE }
+    enum class Status { READY, COPYING, CLEARING }
 }

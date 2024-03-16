@@ -10,6 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
+import kotlin.math.min
 import kotlin.system.exitProcess
 
 class StatusScreenController : CoroutineScope {
@@ -28,6 +29,8 @@ class StatusScreenController : CoroutineScope {
         }
 
         println("${getCurrentTimeStr()} Готово к запуску.")
+
+        startClock()
 
         listenConsole()
     }
@@ -55,6 +58,35 @@ class StatusScreenController : CoroutineScope {
         println("${StringUtils.sizeToString(usableSpace)} из ${StringUtils.sizeToString(totalSpace)} свободно")
 
         return true
+    }
+
+    private fun startClock() {
+        launch {
+            while (true) {
+                delay(60 * 1000)
+
+                val calendar = Calendar.getInstance()
+                val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                val minute = calendar.get(Calendar.MINUTE)
+
+                if (minute == 0 && Copier.status == Copier.Status.READY) {
+                    if (hour == 12 || hour == 14 || hour == 16 || hour == 18 || hour == 20 || hour == 22) {
+                        start()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun listenConsole() {
+        val keyboard = Scanner(System.`in`)
+        while (true) {
+            when (val input = keyboard.nextLine()) {
+                "exit" -> exitProcess(0)
+                "start" -> start()
+                else -> println("Unknown command: $input")
+            }
+        }
     }
 
     private fun start() {
@@ -121,17 +153,6 @@ class StatusScreenController : CoroutineScope {
         println()
         println("${getCurrentTimeStr()} завершено:")
         println("Удалено: ${Copier.deletedFilesCount}")
-    }
-
-    private fun listenConsole() {
-        val keyboard = Scanner(System.`in`)
-        while (true) {
-            when (val input = keyboard.nextLine()) {
-                "exit" -> exitProcess(0)
-                "start" -> start()
-                else -> println("Unknown command: $input")
-            }
-        }
     }
 
     private fun getDoubleBarString(width: Int, progressTop: Float, progressBot: Float): String {
