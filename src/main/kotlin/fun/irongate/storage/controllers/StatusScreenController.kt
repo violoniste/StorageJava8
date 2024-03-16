@@ -10,7 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
-import kotlin.math.min
 import kotlin.system.exitProcess
 
 class StatusScreenController : CoroutineScope {
@@ -69,10 +68,8 @@ class StatusScreenController : CoroutineScope {
                 val hour = calendar.get(Calendar.HOUR_OF_DAY)
                 val minute = calendar.get(Calendar.MINUTE)
 
-                if (minute == 0 && Copier.status == Copier.Status.READY) {
-                    if (hour == 12 || hour == 14 || hour == 16 || hour == 18 || hour == 20 || hour == 22) {
-                        start()
-                    }
+                if (hour == 4 && minute == 0 && Copier.status == Copier.Status.READY) {
+                    start()
                 }
             }
         }
