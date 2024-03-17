@@ -7,6 +7,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.attribute.BasicFileAttributeView
+import java.nio.file.attribute.BasicFileAttributes
 
 
 object Copier : CoroutineScope {
@@ -96,42 +100,45 @@ object Copier : CoroutineScope {
         currentFile = storageFile.path
         val mirrorFile = getMirrorFile(storageFile)
 
-        if (mirrorFile.exists() && mirrorFile.length() == storageFile.length() && mirrorFile.isHidden == storageFile.isHidden) {
-            skippedFilesCount++
-            return
-        }
+        if (!mirrorFile.exists() || mirrorFile.length() != storageFile.length()) {
+            if (mirrorFile.exists())
+                mirrorFile.delete()
 
-        if (mirrorFile.exists())
-            mirrorFile.delete()
+            val inputStream = FileInputStream(storageFile)
+            val outputStream = FileOutputStream(mirrorFile)
+            try {
+                val buffer = ByteArray(1024)
+                var length: Int
+                fileProgress = 0f
+                val fileLength = storageFile.length()
+                var sum = 0L
+                while ((inputStream.read(buffer).also { length = it }) > 0) {
+                    outputStream.write(buffer, 0, length)
+                    sum += length
+                    fileProgress = sum.toFloat() / fileLength.toFloat()
+                }
 
-        val inputStream = FileInputStream(storageFile)
-        val outputStream = FileOutputStream(mirrorFile)
-        try {
-            val buffer = ByteArray(1024)
-            var length: Int
-            fileProgress = 0f
-            val fileLength = storageFile.length()
-            var sum = 0L
-            while ((inputStream.read(buffer).also { length = it }) > 0) {
-                outputStream.write(buffer, 0, length)
-                sum += length
-                fileProgress = sum.toFloat() / fileLength.toFloat()
+                fileProgress = 1f
             }
-            fileProgress = 1f
+            catch (ex: Exception) {
+                println("Copier.copyFile() $ex")
+            }
+            finally {
+                inputStream.close()
+                outputStream.close()
+            }
+
+            val attrs: BasicFileAttributes = Files.readAttributes(Paths.get(storageFile.toURI()), BasicFileAttributes::class.java)
+            val tgtView = Files.getFileAttributeView(Paths.get(mirrorFile.toURI()), BasicFileAttributeView::class.java)
+            tgtView.setTimes(attrs.lastModifiedTime(), attrs.lastAccessTime(), attrs.creationTime())
+
+            copiedFilesCount++
         }
-        catch (ex: Exception) {
-            println("Copier.copyFile() $ex")
-        }
-        finally {
-            inputStream.close()
-            outputStream.close()
+        else {
+            skippedFilesCount++
         }
 
-        if (storageFile.isHidden) {
-            Runtime.getRuntime().exec("attrib +H ${mirrorFile.path}").waitFor()
-        }
-
-        copiedFilesCount++
+        checkAttributes(storageFile, mirrorFile)
     }
 
     private fun getMirrorFile(file: File): File {
@@ -139,6 +146,14 @@ object Copier : CoroutineScope {
         val destination = GlobalParams.mirrorPath + localPath
 
         return File(destination)
+    }
+
+    private fun checkAttributes(storageFile: File, mirrorFile: File) {
+        if (storageFile.isHidden && !mirrorFile.isHidden)
+            Runtime.getRuntime().exec("attrib +H ${mirrorFile.path}").waitFor()
+
+        if (!storageFile.isHidden && mirrorFile.isHidden)
+            Runtime.getRuntime().exec("attrib -H ${mirrorFile.path}").waitFor()
     }
 
     private fun clearDir(mirrorDir: File) {
