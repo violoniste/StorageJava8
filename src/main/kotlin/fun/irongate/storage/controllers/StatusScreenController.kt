@@ -81,6 +81,7 @@ class StatusScreenController : CoroutineScope {
             when (val input = keyboard.nextLine()) {
                 "exit" -> exitProcess(0)
                 "start" -> start()
+                "clear" -> clear()
                 else -> println("Unknown command: $input")
             }
         }
@@ -89,6 +90,12 @@ class StatusScreenController : CoroutineScope {
     private fun start() {
         launch {
             startCopy()
+            startClear()
+        }
+    }
+
+    private fun clear() {
+        launch {
             startClear()
         }
     }
@@ -117,8 +124,8 @@ class StatusScreenController : CoroutineScope {
                 break
         }
 
-        println()
-        println("${getCurrentTimeStr()} завершено:")
+        clearString()
+        println("${getCurrentTimeStr()} Завершено:")
         println("Скопировано: ${Copier.copiedFilesCount}")
         println("Пропущено: ${Copier.skippedFilesCount}")
         println("Объемом: ${StringUtils.sizeToString(Copier.totalFilesSize)}")
@@ -133,7 +140,7 @@ class StatusScreenController : CoroutineScope {
         while (true) {
             delay(16)
 
-            val totalProgress = if (Copier.status == Copier.Status.COPYING) Copier.totalProgress else 100f
+            val totalProgress = if (Copier.status == Copier.Status.CLEARING) Copier.totalProgress else 100f
 
             val builder = StringBuilder(SCREEN_WIDTH)
             builder.append('\r')
@@ -147,8 +154,8 @@ class StatusScreenController : CoroutineScope {
                 break
         }
 
-        println()
-        println("${getCurrentTimeStr()} завершено:")
+        clearString()
+        println("${getCurrentTimeStr()} Завершено:")
         println("Удалено: ${Copier.deletedFilesCount}")
     }
 
@@ -169,6 +176,16 @@ class StatusScreenController : CoroutineScope {
     private fun getCurrentTimeStr(): String {
         val calendar = Calendar.getInstance()
 
+        val year = calendar.get(Calendar.YEAR).toString()
+
+        var month = (calendar.get(Calendar.MONTH) + 1).toString()
+        if (month.length < 2)
+            month = "0$month"
+
+        var day = calendar.get(Calendar.DAY_OF_MONTH).toString()
+        if (day.length < 2)
+            day = "0$day"
+
         var hour = calendar.get(Calendar.HOUR_OF_DAY).toString()
         if (hour.length < 2)
             hour = "0$hour"
@@ -181,6 +198,10 @@ class StatusScreenController : CoroutineScope {
         if (sec.length < 2)
             sec = "0$sec"
 
-        return "$hour:$min:$sec"
+        return "$year.$month.$day $hour:$min:$sec"
+    }
+
+    private fun clearString() {
+        print("\r${String(CharArray(SCREEN_WIDTH)).replace('\u0000', ' ')}\r")
     }
 }
