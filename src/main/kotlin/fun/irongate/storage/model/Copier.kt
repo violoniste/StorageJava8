@@ -79,6 +79,9 @@ object Copier : CoroutineScope {
     }
 
     private fun copyDir(storageDir: File) {
+        if (status == Status.ERROR)
+            return
+
         storageDir.listFiles()?.forEach { file ->
             if (file.isDirectory) {
                 val mirrorDir = getMirrorFile(file)
@@ -97,6 +100,9 @@ object Copier : CoroutineScope {
     }
 
     private fun copyFile(storageFile: File) {
+        if (status == Status.ERROR)
+            return
+
         currentFile = storageFile.path
         val mirrorFile = getMirrorFile(storageFile)
 
@@ -121,12 +127,16 @@ object Copier : CoroutineScope {
                 fileProgress = 1f
             }
             catch (ex: Exception) {
-                println("Copier.copyFile() $ex")
+                ex.printStackTrace()
+                status = Status.ERROR
             }
             finally {
                 inputStream.close()
                 outputStream.close()
             }
+
+            if (status == Status.ERROR)
+                return
 
             val attrs: BasicFileAttributes = Files.readAttributes(Paths.get(storageFile.toURI()), BasicFileAttributes::class.java)
             val tgtView = Files.getFileAttributeView(Paths.get(mirrorFile.toURI()), BasicFileAttributeView::class.java)
@@ -183,5 +193,5 @@ object Copier : CoroutineScope {
         return File(destination)
     }
 
-    enum class Status { READY, COPYING, CLEARING }
+    enum class Status { READY, COPYING, CLEARING, ERROR }
 }
