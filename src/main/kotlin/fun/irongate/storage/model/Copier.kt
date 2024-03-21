@@ -11,6 +11,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributeView
 import java.nio.file.attribute.BasicFileAttributes
+import javax.management.RuntimeErrorException
 
 
 object Copier : CoroutineScope {
@@ -57,6 +58,9 @@ object Copier : CoroutineScope {
             approximateStorageSize = storageDir.totalSpace - storageDir.usableSpace
 
             copyDir(storageDir)
+
+            if (status == Status.ERROR)
+                return@launch
 
             status = Status.READY
         }
