@@ -7,12 +7,17 @@ import `fun`.irongate.storage.model.DiskChecker
 import `fun`.irongate.storage.model.Logger
 import `fun`.irongate.storage.utils.StringUtils
 import `fun`.irongate.storage.utils.StringUtils.getCurrentTimeStr
+import `fun`.irongate.storage.utils.StringUtils.getDoubleBarString
 import kotlinx.coroutines.*
 import java.io.File
 import java.util.*
 import kotlin.system.exitProcess
 
 class StatusScreenController : CoroutineScope {
+    companion object {
+        const val BAR_WIDTH = 102
+    }
+
     override val coroutineContext = Dispatchers.IO
     private var clockJob: Job? = null
 
@@ -51,7 +56,7 @@ class StatusScreenController : CoroutineScope {
         while (true) {
             delay(16)
 
-            // todo прогресс проверки
+            println() // todo прогресс проверки
 
             if (DiskChecker.status != DiskChecker.Status.CHECKING)
                 break
@@ -65,9 +70,7 @@ class StatusScreenController : CoroutineScope {
 
         println("${getCurrentTimeStr()} Завершено:")
         val builder = StringBuilder(SCREEN_WIDTH)
-        builder.append('[')
-        builder.append(getDoubleBarString(100, DiskChecker.progressOccupiedSpace, DiskChecker.progressOccupiedSpace))
-        builder.append(']')
+        builder.append(getDoubleBarString(BAR_WIDTH, DiskChecker.progressOccupiedSpace, DiskChecker.progressOccupiedSpace))
         println(builder.toString())
         println("${StringUtils.sizeToString(DiskChecker.usableSpace)} из ${StringUtils.sizeToString(DiskChecker.totalSpace)} свободно")
 
@@ -80,7 +83,7 @@ class StatusScreenController : CoroutineScope {
         while (true) {
             delay(16)
 
-            // todo прогресс проверки
+            println() // todo прогресс проверки
 
             if (DiskChecker.status != DiskChecker.Status.CHECKING)
                 break
@@ -182,9 +185,7 @@ class StatusScreenController : CoroutineScope {
 
             val builder = StringBuilder(SCREEN_WIDTH)
             builder.append('\r')
-            builder.append('[')
-            builder.append(getDoubleBarString(100, totalProgress, fileProgress))
-            builder.append(']')
+            builder.append(getDoubleBarString(BAR_WIDTH, totalProgress, fileProgress))
             builder.append(" ${Copier.copiedFilesCount}/${Copier.copiedFilesCount + Copier.skippedFilesCount}")
             print(builder.toString())
 
@@ -229,9 +230,7 @@ class StatusScreenController : CoroutineScope {
 
             val builder = StringBuilder(SCREEN_WIDTH)
             builder.append('\r')
-            builder.append('[')
-            builder.append(getDoubleBarString(100, totalProgress, totalProgress))
-            builder.append(']')
+            builder.append(getDoubleBarString(BAR_WIDTH, totalProgress, totalProgress))
             builder.append(" ${Copier.deletedFilesCount}")
             print(builder.toString())
 
@@ -242,21 +241,6 @@ class StatusScreenController : CoroutineScope {
         clearString()
         println("${getCurrentTimeStr()} Завершено:")
         println("Удалено: ${Copier.deletedFilesCount}")
-    }
-
-    @Suppress("SameParameterValue")
-    private fun getDoubleBarString(width: Int, progressTop: Float, progressBot: Float): String {
-        val builder = StringBuilder(width)
-        for (i in 1.. width) {
-            val cellProgress = i / width.toFloat()
-            builder.append(
-                if (cellProgress <= progressTop && cellProgress <= progressBot) "█"
-                else if (cellProgress <= progressTop) "▀"
-                else if (cellProgress <= progressBot) "▄"
-                else " "
-            )
-        }
-        return builder.toString()
     }
 
     private fun clearString() {
