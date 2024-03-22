@@ -1,7 +1,5 @@
 package `fun`.irongate.storage.model
 
-import `fun`.irongate.storage.GlobalParams
-import `fun`.irongate.storage.utils.StringUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

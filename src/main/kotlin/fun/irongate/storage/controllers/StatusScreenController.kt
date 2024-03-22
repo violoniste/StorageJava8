@@ -4,7 +4,9 @@ import `fun`.irongate.storage.GlobalParams
 import `fun`.irongate.storage.GlobalParams.SCREEN_WIDTH
 import `fun`.irongate.storage.model.Copier
 import `fun`.irongate.storage.model.DiskChecker
+import `fun`.irongate.storage.model.Logger
 import `fun`.irongate.storage.utils.StringUtils
+import `fun`.irongate.storage.utils.StringUtils.getCurrentTimeStr
 import kotlinx.coroutines.*
 import java.io.File
 import java.util.*
@@ -18,6 +20,11 @@ class StatusScreenController : CoroutineScope {
 
     private fun init() {
         launch {
+            if (!Logger.checkLogger()) {
+                println("${getCurrentTimeStr()} Логгер не готов!")
+                return@launch
+            }
+
             if (!checkDisks())
                 return@launch
 
@@ -252,35 +259,17 @@ class StatusScreenController : CoroutineScope {
         return builder.toString()
     }
 
-    private fun getCurrentTimeStr(): String {
-        val calendar = Calendar.getInstance()
-
-        val year = calendar.get(Calendar.YEAR).toString()
-
-        var month = (calendar.get(Calendar.MONTH) + 1).toString()
-        if (month.length < 2)
-            month = "0$month"
-
-        var day = calendar.get(Calendar.DAY_OF_MONTH).toString()
-        if (day.length < 2)
-            day = "0$day"
-
-        var hour = calendar.get(Calendar.HOUR_OF_DAY).toString()
-        if (hour.length < 2)
-            hour = "0$hour"
-
-        var min = calendar.get(Calendar.MINUTE).toString()
-        if (min.length < 2)
-            min = "0$min"
-
-        var sec = calendar.get(Calendar.SECOND).toString()
-        if (sec.length < 2)
-            sec = "0$sec"
-
-        return "$year.$month.$day $hour:$min:$sec"
-    }
-
     private fun clearString() {
         print("\r${String(CharArray(SCREEN_WIDTH)).replace('\u0000', ' ')}\r")
+    }
+
+    private fun println() {
+        kotlin.io.println()
+        Logger.log()
+    }
+
+    private fun println(str: String) {
+        kotlin.io.println(str)
+        Logger.log(str)
     }
 }

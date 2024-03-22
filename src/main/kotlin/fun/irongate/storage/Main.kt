@@ -10,14 +10,9 @@ fun main(vararg args: String) {
     val params = argToMap(args)
     params["storage"]?.let { GlobalParams.storagePath = it }
     params["mirror"]?.let { GlobalParams.mirrorPath = it }
+    params["log"]?.let { GlobalParams.logPath = it }
 
     StatusScreenController()
-
-
-//    for (i in 0..100) {
-//        Thread.sleep(50)
-//        printProgress(i)
-//    }
 }
 
 private fun argToMap(args: Array<out String>): Map<String, String> {
@@ -29,25 +24,4 @@ private fun argToMap(args: Array<out String>): Map<String, String> {
         map[key] = value
     }
     return map
-}
-
-private fun printProgress(percent: Int) {
-    val string = StringBuilder(140)
-    string
-        .append('\r')
-        .append(
-            java.lang.String.join(
-                "", Collections.nCopies(
-                    if (percent == 0) 2 else 2 - log10(percent.toDouble())
-                        .toInt(), " "
-                )
-            )
-        )
-        .append(String.format(" %d%% [", percent))
-        .append(java.lang.String.join("", Collections.nCopies(percent, "=")))
-        .append('>')
-        .append(java.lang.String.join("", Collections.nCopies(100 - percent, " ")))
-        .append(']')
-
-    print(string)
 }

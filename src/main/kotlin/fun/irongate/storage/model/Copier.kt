@@ -1,6 +1,7 @@
 package `fun`.irongate.storage.model
 
 import `fun`.irongate.storage.GlobalParams
+import `fun`.irongate.storage.utils.StringUtils.getCurrentTimeStr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -11,7 +12,6 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributeView
 import java.nio.file.attribute.BasicFileAttributes
-import javax.management.RuntimeErrorException
 
 
 object Copier : CoroutineScope {
@@ -38,9 +38,6 @@ object Copier : CoroutineScope {
     var fileProgress = 0f
         private set
 
-    var currentFile = ""
-        private set
-
     private var approximateStorageSize: Long = 0
     private var approximateMirrorSize: Long = 0
 
@@ -52,7 +49,6 @@ object Copier : CoroutineScope {
             totalFilesSize = 0L
             totalProgress = 0f
             fileProgress = 0f
-            currentFile = ""
 
             val storageDir = File(GlobalParams.storagePath)
             approximateStorageSize = storageDir.totalSpace - storageDir.usableSpace
@@ -107,7 +103,6 @@ object Copier : CoroutineScope {
         if (status == Status.ERROR)
             return
 
-        currentFile = storageFile.path
         val mirrorFile = getMirrorFile(storageFile)
 
         if (!mirrorFile.exists() || mirrorFile.length() != storageFile.length()) {
@@ -132,6 +127,7 @@ object Copier : CoroutineScope {
             }
             catch (ex: Exception) {
                 ex.printStackTrace()
+                Logger.log("${getCurrentTimeStr()} ${ex.stackTraceToString()}")
                 status = Status.ERROR
             }
             finally {
@@ -181,12 +177,12 @@ object Copier : CoroutineScope {
 
             if (!storageFile.exists()) {
                 mirrorFile.deleteRecursively()
+                Logger.log("${getCurrentTimeStr()} Deleted: ${mirrorFile.absolutePath}")
                 deletedFilesCount++
             }
             else if (mirrorFile.isDirectory) {
                 clearDir(mirrorFile)
             }
-
         }
     }
 
