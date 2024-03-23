@@ -34,6 +34,21 @@ object StringUtils {
         return builder.toString()
     }
 
+    @Suppress("SameParameterValue")
+    fun getBarString(width: Int, progress: Float): String {
+        val barWidth = width - 2
+        val builder = StringBuilder(barWidth)
+        builder.append('▐')
+        for (i in 1.. barWidth) {
+            val cellProgress = i / barWidth.toFloat()
+            builder.append(
+                if (cellProgress <= progress) "█" else "▁"
+            )
+        }
+        builder.append('▌')
+        return builder.toString()
+    }
+
     fun getCurrentTimeStr(): String {
         val calendar = Calendar.getInstance()
 

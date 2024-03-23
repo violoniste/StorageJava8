@@ -6,6 +6,7 @@ import `fun`.irongate.storage.model.Copier
 import `fun`.irongate.storage.model.DiskChecker
 import `fun`.irongate.storage.model.Logger
 import `fun`.irongate.storage.utils.StringUtils
+import `fun`.irongate.storage.utils.StringUtils.getBarString
 import `fun`.irongate.storage.utils.StringUtils.getCurrentTimeStr
 import `fun`.irongate.storage.utils.StringUtils.getDoubleBarString
 import kotlinx.coroutines.*
@@ -70,7 +71,7 @@ class StatusScreenController : CoroutineScope {
 
         println("${getCurrentTimeStr()} Завершено:")
         val builder = StringBuilder(SCREEN_WIDTH)
-        builder.append(getDoubleBarString(BAR_WIDTH, DiskChecker.progressOccupiedSpace, DiskChecker.progressOccupiedSpace))
+        builder.append(getBarString(BAR_WIDTH, DiskChecker.progressOccupiedSpace))
         println(builder.toString())
         println("${StringUtils.sizeToString(DiskChecker.usableSpace)} из ${StringUtils.sizeToString(DiskChecker.totalSpace)} свободно")
 
@@ -230,7 +231,7 @@ class StatusScreenController : CoroutineScope {
 
             val builder = StringBuilder(SCREEN_WIDTH)
             builder.append('\r')
-            builder.append(getDoubleBarString(BAR_WIDTH, totalProgress, totalProgress))
+            builder.append(getBarString(BAR_WIDTH, totalProgress))
             builder.append(" ${Copier.deletedFilesCount}")
             print(builder.toString())
 
