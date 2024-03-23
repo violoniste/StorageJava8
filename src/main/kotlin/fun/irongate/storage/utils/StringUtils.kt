@@ -42,7 +42,7 @@ object StringUtils {
         for (i in 1.. barWidth) {
             val cellProgress = i / barWidth.toFloat()
             builder.append(
-                if (cellProgress <= progress) "█" else "▁"
+                if (cellProgress <= progress) "█" else "_"
             )
         }
         builder.append('▌')
