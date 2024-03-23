@@ -20,21 +20,24 @@ class StatusScreenController : CoroutineScope {
     }
 
     override val coroutineContext = Dispatchers.IO
+    private val logger = Logger()
     private var clockJob: Job? = null
+    private var status: Status? = null
 
     init { init() }
 
     private fun init() {
         launch {
-            if (!Logger.checkLogger()) {
-                println("${getCurrentTimeStr()} Логгер не готов!")
+            if (!logger.checkLogger()) {
+                println("Логгер не готов!")
+                status = Status.ERROR
                 return@launch
             }
 
             if (!checkDisks())
                 return@launch
 
-            println("${getCurrentTimeStr()} Готово к запуску.")
+            logger.logln("${getCurrentTimeStr()} Готово к запуску.")
 
             startClock()
         }
@@ -44,12 +47,12 @@ class StatusScreenController : CoroutineScope {
 
     private suspend fun checkDisks(): Boolean {
         if (DiskChecker.status == DiskChecker.Status.CHECKING) {
-            println("Проверка в процессе!")
+            logger.logln("Проверка в процессе!")
             return false
         }
 
-        println()
-        println("${getCurrentTimeStr()} Проверка диска хранилища...")
+        logger.logln()
+        logger.logln("${getCurrentTimeStr()} Проверка диска хранилища...")
 
         val storage = File(GlobalParams.storagePath)
         DiskChecker.checkDisk(storage)
@@ -57,7 +60,7 @@ class StatusScreenController : CoroutineScope {
         while (true) {
             delay(16)
 
-            println() // todo прогресс проверки
+            logger.logln() // todo прогресс проверки
 
             if (DiskChecker.status != DiskChecker.Status.CHECKING)
                 break
@@ -65,18 +68,18 @@ class StatusScreenController : CoroutineScope {
 
         clearString()
         if (DiskChecker.status == DiskChecker.Status.ERROR) {
-            println("${getCurrentTimeStr()} Ошибка при проверке хранилища: ${DiskChecker.error}")
+            logger.logln("${getCurrentTimeStr()} Ошибка при проверке хранилища: ${DiskChecker.error}")
             return false
         }
 
-        println("${getCurrentTimeStr()} Завершено:")
+        logger.logln("${getCurrentTimeStr()} Завершено:")
         val builder = StringBuilder(SCREEN_WIDTH)
         builder.append(getBarString(BAR_WIDTH, DiskChecker.progressOccupiedSpace))
-        println(builder.toString())
-        println("${StringUtils.sizeToString(DiskChecker.usableSpace)} из ${StringUtils.sizeToString(DiskChecker.totalSpace)} свободно")
+        logger.logln(builder.toString())
+        logger.logln("${StringUtils.sizeToString(DiskChecker.usableSpace)} из ${StringUtils.sizeToString(DiskChecker.totalSpace)} свободно")
 
-        println()
-        println("${getCurrentTimeStr()} Проверка диска зеркала...")
+        logger.logln()
+        logger.logln("${getCurrentTimeStr()} Проверка диска зеркала...")
 
         val mirror = File(GlobalParams.mirrorPath)
         DiskChecker.checkDisk(mirror)
@@ -84,7 +87,7 @@ class StatusScreenController : CoroutineScope {
         while (true) {
             delay(16)
 
-            println() // todo прогресс проверки
+            logger.logln() // todo прогресс проверки
 
             if (DiskChecker.status != DiskChecker.Status.CHECKING)
                 break
@@ -92,22 +95,22 @@ class StatusScreenController : CoroutineScope {
 
         clearString()
         if (DiskChecker.status == DiskChecker.Status.ERROR) {
-            println("${getCurrentTimeStr()} Ошибка при проверке зеркала: ${DiskChecker.error}")
+            logger.logln("${getCurrentTimeStr()} Ошибка при проверке зеркала: ${DiskChecker.error}")
             return false
         }
 
-        println("${getCurrentTimeStr()} Завершено:")
+        logger.logln("${getCurrentTimeStr()} Завершено:")
 
         return true
     }
 
     private fun startClock() {
         if (clockJob != null) {
-            println("${getCurrentTimeStr()} Таймер уже активирован!")
+            logger.logln("${getCurrentTimeStr()} Таймер уже активирован!")
             return
         }
 
-        println("${getCurrentTimeStr()} Таймер активирован.")
+        logger.logln("${getCurrentTimeStr()} Таймер активирован.")
         clockJob = launch {
             while (true) {
                 delay(60 * 1000)
@@ -118,7 +121,7 @@ class StatusScreenController : CoroutineScope {
 
                 if (hour == 4 && minute == 0 && Copier.status == Copier.Status.READY) {
                     if (!checkDisks()) {
-                        println("${getCurrentTimeStr()} Таймер выключен из-за ошибки")
+                        logger.logln("${getCurrentTimeStr()} Таймер выключен из-за ошибки")
                         break
                     }
 
@@ -131,20 +134,20 @@ class StatusScreenController : CoroutineScope {
     private fun stopClock() {
         clockJob?.cancel()
         clockJob = null
-        println("${getCurrentTimeStr()} Таймер остановлен!")
+        logger.logln("${getCurrentTimeStr()} Таймер остановлен!")
     }
 
     private fun listenConsole() {
         val keyboard = Scanner(System.`in`)
         while (true) {
-            when (val input = keyboard.nextLine()) {
+            when (val input = keyboard.nextLine()) {    // todo проверка статуса
                 "exit" -> exitProcess(0)
                 "check" -> launch { checkDisks() }
                 "start" -> start()
                 "clear" -> clear()
                 "clock" -> startClock()
                 "stop" -> stopClock()
-                else -> println("Unknown command: $input")
+                else -> logger.logln("Unknown command: $input")
             }
         }
     }
@@ -164,17 +167,17 @@ class StatusScreenController : CoroutineScope {
 
     private suspend fun startCopy() {
         if (Copier.status == Copier.Status.ERROR) {
-            println("Ошибка копирования!")
+            logger.logln("Ошибка копирования!")
             return
         }
 
         if (DiskChecker.status != DiskChecker.Status.READY) {
-            println("Проверка дисков не пройдена!")
+            logger.logln("Проверка дисков не пройдена!")
             return
         }
 
-        println()
-        println("${getCurrentTimeStr()} Копирование...")
+        logger.logln()
+        logger.logln("${getCurrentTimeStr()} Копирование...")
 
         Copier.startCopy()
 
@@ -197,30 +200,30 @@ class StatusScreenController : CoroutineScope {
         clearString()
 
         if (Copier.status == Copier.Status.ERROR) {
-            println("${getCurrentTimeStr()} Ошибка при копировании!")
+            logger.logln("${getCurrentTimeStr()} Ошибка при копировании!")
             stopClock()
             return
         }
 
-        println("${getCurrentTimeStr()} Завершено:")
-        println("Скопировано: ${Copier.copiedFilesCount}")
-        println("Пропущено: ${Copier.skippedFilesCount}")
-        println("Объемом: ${StringUtils.sizeToString(Copier.totalFilesSize)}")
+        logger.logln("${getCurrentTimeStr()} Завершено:")
+        logger.logln("Скопировано: ${Copier.copiedFilesCount}")
+        logger.logln("Пропущено: ${Copier.skippedFilesCount}")
+        logger.logln("Объемом: ${StringUtils.sizeToString(Copier.totalFilesSize)}")
     }
 
     private suspend fun startClear() {
         if (Copier.status == Copier.Status.ERROR) {
-            println("Ошибка копирования!")
+            logger.logln("Ошибка копирования!")
             return
         }
 
         if (DiskChecker.status != DiskChecker.Status.READY) {
-            println("Проверка дисков не пройдена!")
+            logger.logln("Проверка дисков не пройдена!")
             return
         }
 
-        println()
-        println("${getCurrentTimeStr()} Очистка...")
+        logger.logln()
+        logger.logln("${getCurrentTimeStr()} Очистка...")
 
         Copier.startClear()
 
@@ -240,21 +243,13 @@ class StatusScreenController : CoroutineScope {
         }
 
         clearString()
-        println("${getCurrentTimeStr()} Завершено:")
-        println("Удалено: ${Copier.deletedFilesCount}")
+        logger.logln("${getCurrentTimeStr()} Завершено:")
+        logger.logln("Удалено: ${Copier.deletedFilesCount}")
     }
 
     private fun clearString() {
         print("\r${String(CharArray(SCREEN_WIDTH)).replace('\u0000', ' ')}\r")
     }
 
-    private fun println() {
-        kotlin.io.println()
-        Logger.log()
-    }
-
-    private fun println(str: String) {
-        kotlin.io.println(str)
-        Logger.log(str)
-    }
+    enum class Status { OK, ERROR }
 }

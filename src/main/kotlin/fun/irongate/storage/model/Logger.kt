@@ -1,20 +1,19 @@
 package `fun`.irongate.storage.model
 
 import `fun`.irongate.storage.GlobalParams
+import `fun`.irongate.storage.utils.StringUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 
-object Logger : CoroutineScope {
+class Logger : CoroutineScope {
     override val coroutineContext = Dispatchers.IO
     private val channel = Channel<String>(Channel.UNLIMITED)
-    private val mutex = Mutex()
 
     init {
         launch {
@@ -29,12 +28,17 @@ object Logger : CoroutineScope {
         }
     }
 
-    fun log() {
-        log("")
+    fun logln() {
+        logln("")
     }
 
-    fun log(str: String) {
-        launch { channel.send(str) }
+    fun logln(str: String) {
+        val time = StringUtils.getCurrentTimeStr()
+        val withTime = "$time $str"
+
+        println(withTime)
+
+        launch { channel.send(withTime) }
     }
 
     fun checkLogger(): Boolean {

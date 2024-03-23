@@ -1,7 +1,6 @@
 package `fun`.irongate.storage.model
 
 import `fun`.irongate.storage.GlobalParams
-import `fun`.irongate.storage.utils.StringUtils.getCurrentTimeStr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -16,6 +15,7 @@ import java.nio.file.attribute.BasicFileAttributes
 
 object Copier : CoroutineScope {
     override val coroutineContext = Dispatchers.IO
+    private val logger = Logger()
 
     var status = Status.READY
         private set
@@ -130,8 +130,7 @@ object Copier : CoroutineScope {
                 fileProgress = 1f
             }
             catch (ex: Exception) {
-                ex.printStackTrace()
-                Logger.log("${getCurrentTimeStr()} ${ex.stackTraceToString()}")
+                logger.logln(ex.stackTraceToString())
                 status = Status.ERROR
             }
             finally {
@@ -181,7 +180,7 @@ object Copier : CoroutineScope {
 
             if (!storageFile.exists()) {
                 mirrorFile.deleteRecursively()
-                Logger.log("${getCurrentTimeStr()} Deleted: ${mirrorFile.absolutePath}")
+                logger.logln("Deleted: ${mirrorFile.absolutePath}")
                 deletedFilesCount++
             }
             else if (mirrorFile.isDirectory) {
