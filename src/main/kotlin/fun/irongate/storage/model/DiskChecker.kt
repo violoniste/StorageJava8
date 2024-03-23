@@ -5,19 +5,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
-object DiskChecker : CoroutineScope {
+class DiskChecker(private val disk: File) : CoroutineScope {
     override val coroutineContext = Dispatchers.IO
 
     var status = Status.READY
         private set
 
     var totalSpace = 0L
+        private set
+
     var usableSpace = 0L
+        private set
+
     var progressOccupiedSpace: Float = 0f
+        private set
 
     var error: String? = null
+        private set
 
-    fun checkDisk(disk: File) {
+    fun checkDisk() {
         status = Status.CHECKING
 
         launch {
@@ -41,5 +47,5 @@ object DiskChecker : CoroutineScope {
         }
     }
 
-    enum class Status { READY, CHECKING, ERROR }
+    enum class Status { READY, CHECKING, ERROR, OK }
 }
