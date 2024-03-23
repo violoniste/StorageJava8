@@ -28,15 +28,12 @@ class Logger : CoroutineScope {
         }
     }
 
-    fun logln() {
-        logln("")
-    }
-
-    fun logln(str: String) {
+    fun logln(str: String, printLn: Boolean = true) {
         val time = StringUtils.getCurrentTimeStr()
         val withTime = "$time $str"
 
-        println(withTime)
+        if (printLn)
+            println(withTime)
 
         launch { channel.send(withTime) }
     }

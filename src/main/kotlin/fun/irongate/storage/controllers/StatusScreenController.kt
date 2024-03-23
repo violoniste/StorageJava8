@@ -2,6 +2,7 @@ package `fun`.irongate.storage.controllers
 
 import `fun`.irongate.storage.GlobalParams
 import `fun`.irongate.storage.GlobalParams.SCREEN_WIDTH
+import `fun`.irongate.storage.model.Cleaner
 import `fun`.irongate.storage.model.Copier
 import `fun`.irongate.storage.model.DiskChecker
 import `fun`.irongate.storage.model.Logger
@@ -27,48 +28,47 @@ class StatusScreenController : CoroutineScope {
 
     private fun init() {
         launch {
-            if (!logger.checkLogger()) {
-                println("Логгер не готов!")
-                status = Status.ERROR
-                return@launch
-            }
-
-            status = Status.OK
-
-            if (!checkDisks()) {
-                status = Status.ERROR
-                return@launch
-            }
-
+            checkLogger()
+            checkDisks()
             startClock()
         }
 
         listenConsole()
     }
 
-    private suspend fun checkDisks(): Boolean {
-        if (status != Status.OK) {
-            logger.logln("Нельзя запустить проверку дисков!")
-            return false
-        }
-        status = Status.CHECKING
-
-        if (!checkStorage()) {
+    private fun checkLogger() {
+        if (!logger.checkLogger()) {
             status = Status.ERROR
-            return false
-        }
-
-        if (!checkMirror()) {
-            status = Status.ERROR
-            return false
+            println("Логгер не готов!")
+            return
         }
 
         status = Status.OK
-
-        return true
+        return
     }
 
-    private suspend fun checkStorage(): Boolean {
+    private suspend fun checkDisks() {
+        if (status != Status.OK) {
+            logger.logln("Нельзя запустить проверку дисков! Статус:$status")
+            return
+        }
+        status = Status.CHECKING
+
+        checkStorage()
+
+        if (status == Status.ERROR)
+            return
+
+        checkMirror()
+
+        if (status == Status.ERROR)
+            return
+
+        status = Status.OK
+        return
+    }
+
+    private suspend fun checkStorage() {
         logger.logln("Проверка диска хранилища (${GlobalParams.storagePath})...")
 
         val storage = File(GlobalParams.storagePath)
@@ -86,7 +86,7 @@ class StatusScreenController : CoroutineScope {
         if (checker.status == DiskChecker.Status.ERROR) {
             status = Status.ERROR
             logger.logln("Ошибка при проверке хранилища: ${checker.error}")
-            return false
+            return
         }
 
         val builder = StringBuilder()
@@ -95,10 +95,10 @@ class StatusScreenController : CoroutineScope {
         builder.append("${sizeToString(checker.usableSpace)} из ${sizeToString(checker.totalSpace)} свободно\n")
         logger.logln(builder.toString())
 
-        return true
+        return
     }
 
-    private suspend fun checkMirror(): Boolean {
+    private suspend fun checkMirror() {
         logger.logln("Проверка диска зеркала (${GlobalParams.mirrorPath})...")
 
         val mirror = File(GlobalParams.mirrorPath)
@@ -115,7 +115,7 @@ class StatusScreenController : CoroutineScope {
         if (checker.status == DiskChecker.Status.ERROR) {
             status = Status.ERROR
             logger.logln("Ошибка при проверке зеркала: ${checker.error}")
-            return false
+            return
         }
 
         val builder = StringBuilder()
@@ -124,10 +124,97 @@ class StatusScreenController : CoroutineScope {
         builder.append("${sizeToString(checker.usableSpace)} из ${sizeToString(checker.totalSpace)} свободно\n")
         logger.logln(builder.toString())
 
-        return true
+        return
+    }
+
+    private suspend fun copy() {
+        if (status != Status.OK) {
+            logger.logln("Нельзя запустить копирование! Статус:$status")
+            return
+        }
+        status = Status.COPYING
+        logger.logln("Копирование...")
+
+        val copier = Copier()
+        copier.startCopy()
+
+        while (true) {
+            delay(16)
+
+            val builder = StringBuilder(SCREEN_WIDTH)
+            builder.append('\r')
+            builder.append(getDoubleBarString(BAR_WIDTH, copier.totalProgress, copier.fileProgress))
+            builder.append(" ${copier.copiedFilesCount}/${copier.totalFilesCount}")
+            print(builder.toString())
+
+            if (copier.status != Copier.Status.COPYING)
+                break
+        }
+
+        clearString()
+
+        if (copier.status == Copier.Status.ERROR) {
+            status = Status.ERROR
+            logger.logln("Ошибка при копировании: ${copier.error}")
+            return
+        }
+
+        val builder = StringBuilder()
+        builder.append("Завершено:\n")
+        builder.append("Скопировано: ${copier.copiedFilesCount}\n")
+        builder.append("Объемом: ${sizeToString(copier.copiedFilesSize)}\n")
+        builder.append("Пропущено: ${copier.totalFilesCount}\n")
+        logger.logln(builder.toString())
+
+        status = Status.OK
+    }
+
+    private suspend fun clear() {
+        if (status != Status.OK) {
+            logger.logln("Нельзя запустить очистку! Статус:$status")
+            return
+        }
+        status = Status.CLEARING
+        logger.logln("Очистка...")
+
+        val cleaner = Cleaner(logger)
+        cleaner.startClear()
+
+        while (true) {
+            delay(16)
+
+            val builder = StringBuilder(SCREEN_WIDTH)
+            builder.append('\r')
+            builder.append(getBarString(BAR_WIDTH, cleaner.totalProgress))
+            builder.append(" ${cleaner.deletedFilesCount}/${cleaner.totalFilesCount}")
+            print(builder.toString())
+
+            if (cleaner.status != Cleaner.Status.CLEARING)
+                break
+        }
+
+        clearString()
+
+        if (cleaner.status == Cleaner.Status.ERROR) {
+            status = Status.ERROR
+            logger.logln("Ошибка при очистке! ${cleaner.error}")
+            return
+        }
+
+        val builder = StringBuilder()
+        builder.append("Завершено:\n")
+        builder.append("Удалено: ${cleaner.deletedFilesCount}\n")
+        logger.logln(builder.toString())
+
+        status = Status.OK
     }
 
     private fun startClock() {
+        if (status == Status.ERROR) {
+            logger.logln("Нельзя запустить таймер из-за ошибки!")
+            return
+        }
+
         if (clockJob != null) {
             logger.logln("Таймер уже активирован!")
             return
@@ -138,17 +225,24 @@ class StatusScreenController : CoroutineScope {
             while (true) {
                 delay(60 * 1000)
 
+                if (status == Status.ERROR) {
+                    logger.logln("Таймер выключен из-за ошибки!")
+                    break
+                }
+
                 val calendar = Calendar.getInstance()
                 val hour = calendar.get(Calendar.HOUR_OF_DAY)
                 val minute = calendar.get(Calendar.MINUTE)
 
-                if (hour == 4 && minute == 0 && Copier.status == Copier.Status.READY) {
-                    if (!checkDisks()) {
-                        logger.logln("Таймер выключен из-за ошибки")
-                        break
+                if (hour == 4 && minute == 0 && status == Status.OK) {
+                    if (status != Status.OK) {
+                        logger.logln("Нельзя запустить по таймеру! Статус:$status")
+
                     }
 
-                    start()
+                    checkDisks()
+                    copy()
+                    clear()
                 }
             }
         }
@@ -163,116 +257,21 @@ class StatusScreenController : CoroutineScope {
     private fun listenConsole() {
         val keyboard = Scanner(System.`in`)
         while (true) {
-            when (val input = keyboard.nextLine()) {    // todo проверка статуса
+            when (val input = keyboard.nextLine()) {
                 "exit" -> exitProcess(0)
                 "check" -> launch { checkDisks() }
-                "start" -> start()
-                "clear" -> clear()
+                "copy" -> launch { copy() }
+                "clear" -> launch { clear() }
                 "clock" -> startClock()
                 "stop" -> stopClock()
-                else -> logger.logln("Unknown command: $input")
+                else -> logger.logln("Неизвестная команда: $input")
             }
         }
-    }
-
-    private fun start() {
-        launch {
-            startCopy()
-            startClear()
-        }
-    }
-
-    private fun clear() {
-        launch {
-            startClear()
-        }
-    }
-
-    private suspend fun startCopy() {
-        if (Copier.status == Copier.Status.ERROR) {
-            logger.logln("Ошибка копирования!")
-            return
-        }
-
-        if (status != Status.OK) {
-            logger.logln("Проверка дисков не пройдена!")
-            return
-        }
-
-        logger.logln()
-        logger.logln("Копирование...")
-
-        Copier.startCopy()
-
-        while (true) {
-            delay(16)
-
-            val totalProgress = if (Copier.status == Copier.Status.COPYING) Copier.totalProgress else 100f
-            val fileProgress = if (Copier.status == Copier.Status.COPYING) Copier.fileProgress else 100f
-
-            val builder = StringBuilder(SCREEN_WIDTH)
-            builder.append('\r')
-            builder.append(getDoubleBarString(BAR_WIDTH, totalProgress, fileProgress))
-            builder.append(" ${Copier.copiedFilesCount}/${Copier.copiedFilesCount + Copier.skippedFilesCount}")
-            print(builder.toString())
-
-            if (Copier.status != Copier.Status.COPYING)
-                break
-        }
-
-        clearString()
-
-        if (Copier.status == Copier.Status.ERROR) {
-            logger.logln("Ошибка при копировании!")
-            stopClock()
-            return
-        }
-
-        logger.logln("Завершено:")
-        logger.logln("Скопировано: ${Copier.copiedFilesCount}")
-        logger.logln("Пропущено: ${Copier.skippedFilesCount}")
-        logger.logln("Объемом: ${sizeToString(Copier.totalFilesSize)}")
-    }
-
-    private suspend fun startClear() {
-        if (Copier.status == Copier.Status.ERROR) {
-            logger.logln("Ошибка копирования!")
-            return
-        }
-
-        if (status != Status.OK) {
-            logger.logln("Проверка дисков не пройдена!")
-            return
-        }
-
-        logger.logln()
-        logger.logln("Очистка...")
-
-        Copier.startClear()
-
-        while (true) {
-            delay(16)
-
-            val totalProgress = if (Copier.status == Copier.Status.CLEARING) Copier.totalProgress else 100f
-
-            val builder = StringBuilder(SCREEN_WIDTH)
-            builder.append('\r')
-            builder.append(getBarString(BAR_WIDTH, totalProgress))
-            builder.append(" ${Copier.deletedFilesCount}/${Copier.totalFilesCount}")
-            print(builder.toString())
-
-            if (Copier.status != Copier.Status.CLEARING)
-                break
-        }
-
-        clearString()
-        logger.logln("Завершено:")
-        logger.logln("Удалено: ${Copier.deletedFilesCount}")
     }
 
     private fun clearString() {
         print("\r${String(CharArray(SCREEN_WIDTH)).replace('\u0000', ' ')}\r")
     }
 
-    enum class Status { OK, CHECKING, ERROR }
+    enum class Status { OK, CHECKING, COPYING, CLEARING, ERROR }
 }

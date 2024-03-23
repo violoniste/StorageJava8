@@ -13,26 +13,22 @@ import java.nio.file.attribute.BasicFileAttributeView
 import java.nio.file.attribute.BasicFileAttributes
 
 
-object Copier : CoroutineScope {
+class Copier : CoroutineScope {
     override val coroutineContext = Dispatchers.IO
-    private val logger = Logger()
 
     var status = Status.READY
+        private set
+
+    var error: String? = null
         private set
 
     var copiedFilesCount = 0
         private set
 
-    var skippedFilesCount = 0
-        private set
-
-    var deletedFilesCount = 0
-        private set
-
     var totalFilesCount = 0
         private set
 
-    var totalFilesSize = 0L
+    var copiedFilesSize = 0L
         private set
 
     var totalProgress = 0f
@@ -41,18 +37,13 @@ object Copier : CoroutineScope {
     var fileProgress = 0f
         private set
 
+    private var totalFilesSize = 0L
+
     private var approximateStorageSize: Long = 0
-    private var approximateMirrorSize: Long = 0
 
     fun startCopy() {
+        status = Status.COPYING
         launch(Dispatchers.IO) {
-            status = Status.COPYING
-            copiedFilesCount = 0
-            skippedFilesCount = 0
-            totalFilesSize = 0L
-            totalProgress = 0f
-            fileProgress = 0f
-
             val storageDir = File(GlobalParams.storagePath)
             approximateStorageSize = storageDir.totalSpace - storageDir.usableSpace
 
@@ -61,24 +52,7 @@ object Copier : CoroutineScope {
             if (status == Status.ERROR)
                 return@launch
 
-            status = Status.READY
-        }
-    }
-
-    fun startClear() {
-        launch {
-            status = Status.CLEARING
-            deletedFilesCount = 0
-            totalFilesCount = 0
-            totalFilesSize = 0L
-            totalProgress = 0f
-
-            val mirrorDir = File(GlobalParams.mirrorPath)
-            approximateMirrorSize = mirrorDir.totalSpace - mirrorDir.usableSpace
-
-            clearDir(mirrorDir)
-
-            status = Status.READY
+            status = Status.DONE
         }
     }
 
@@ -96,9 +70,6 @@ object Copier : CoroutineScope {
             }
             else {
                 copyFile(file)
-
-                totalFilesSize += file.length()
-                totalProgress = totalFilesSize.toFloat() / approximateStorageSize.toFloat()
             }
         }
     }
@@ -130,7 +101,7 @@ object Copier : CoroutineScope {
                 fileProgress = 1f
             }
             catch (ex: Exception) {
-                logger.logln(ex.stackTraceToString())
+                error = ex.stackTraceToString()
                 status = Status.ERROR
             }
             finally {
@@ -146,10 +117,13 @@ object Copier : CoroutineScope {
             tgtView.setTimes(attrs.lastModifiedTime(), attrs.lastAccessTime(), attrs.creationTime())
 
             copiedFilesCount++
+            copiedFilesSize += storageFile.length()
         }
-        else {
-            skippedFilesCount++
-        }
+
+        totalFilesCount++
+
+        totalFilesSize += storageFile.length()
+        totalProgress = totalFilesSize.toFloat() / approximateStorageSize.toFloat()
 
         checkAttributes(storageFile, mirrorFile)
     }
@@ -169,34 +143,5 @@ object Copier : CoroutineScope {
             Runtime.getRuntime().exec("attrib -H ${mirrorFile.path}").waitFor()
     }
 
-    private fun clearDir(mirrorDir: File) {
-        mirrorDir.listFiles()?.forEach { mirrorFile ->
-            val storageFile = getStorageFile(mirrorFile)
-
-            if (!mirrorFile.isDirectory) {
-                totalFilesSize += mirrorFile.length()
-                totalProgress = totalFilesSize.toFloat() / approximateMirrorSize.toFloat()
-            }
-
-            if (!storageFile.exists()) {
-                mirrorFile.deleteRecursively()
-                logger.logln("Deleted: ${mirrorFile.absolutePath}")
-                deletedFilesCount++
-            }
-            else if (mirrorFile.isDirectory) {
-                clearDir(mirrorFile)
-            }
-
-            totalFilesCount++
-        }
-    }
-
-    private fun getStorageFile(file: File): File {
-        val localPath = file.path.split(GlobalParams.mirrorPath)[1]
-        val destination = GlobalParams.storagePath + localPath
-
-        return File(destination)
-    }
-
-    enum class Status { READY, COPYING, CLEARING, ERROR }
+    enum class Status { READY, COPYING, ERROR, DONE }
 }
