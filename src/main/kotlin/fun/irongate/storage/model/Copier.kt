@@ -29,6 +29,9 @@ object Copier : CoroutineScope {
     var deletedFilesCount = 0
         private set
 
+    var totalFilesCount = 0
+        private set
+
     var totalFilesSize = 0L
         private set
 
@@ -66,6 +69,7 @@ object Copier : CoroutineScope {
         launch {
             status = Status.CLEARING
             deletedFilesCount = 0
+            totalFilesCount = 0
             totalFilesSize = 0L
             totalProgress = 0f
 
@@ -183,6 +187,8 @@ object Copier : CoroutineScope {
             else if (mirrorFile.isDirectory) {
                 clearDir(mirrorFile)
             }
+
+            totalFilesCount++
         }
     }
 

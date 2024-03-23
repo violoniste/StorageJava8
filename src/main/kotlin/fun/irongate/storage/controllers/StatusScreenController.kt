@@ -232,7 +232,7 @@ class StatusScreenController : CoroutineScope {
             val builder = StringBuilder(SCREEN_WIDTH)
             builder.append('\r')
             builder.append(getBarString(BAR_WIDTH, totalProgress))
-            builder.append(" ${Copier.deletedFilesCount}")
+            builder.append(" ${Copier.deletedFilesCount}/${Copier.totalFilesCount}")
             print(builder.toString())
 
             if (Copier.status != Copier.Status.CLEARING)
