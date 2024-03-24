@@ -11,6 +11,7 @@ fun main(vararg args: String) {
     params["storage"]?.let { GlobalParams.storagePath = it }
     params["mirror"]?.let { GlobalParams.mirrorPath = it }
     params["log"]?.let { GlobalParams.logPath = it }
+    params["sounds"]?.let { GlobalParams.soundsPath = it }
 
     StatusScreenController()
 }

@@ -6,4 +6,5 @@ object GlobalParams {
     var storagePath = ""
     var mirrorPath = ""
     var logPath = ""
+    var soundsPath = ""
 }

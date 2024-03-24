@@ -2,10 +2,7 @@ package `fun`.irongate.storage.controllers
 
 import `fun`.irongate.storage.GlobalParams
 import `fun`.irongate.storage.GlobalParams.SCREEN_WIDTH
-import `fun`.irongate.storage.model.Cleaner
-import `fun`.irongate.storage.model.Copier
-import `fun`.irongate.storage.model.DiskChecker
-import `fun`.irongate.storage.model.Logger
+import `fun`.irongate.storage.model.*
 import `fun`.irongate.storage.utils.StringUtils.getBarString
 import `fun`.irongate.storage.utils.StringUtils.getDoubleBarString
 import `fun`.irongate.storage.utils.StringUtils.sizeToString
@@ -21,6 +18,7 @@ class StatusScreenController : CoroutineScope {
 
     override val coroutineContext = Dispatchers.IO
     private val logger = Logger()
+    private val alarm = Alarm()
     private var clockJob: Job? = null
     private var status: Status? = null
 
@@ -29,6 +27,7 @@ class StatusScreenController : CoroutineScope {
     private fun init() {
         launch {
             checkLogger()
+            initAlarm()
             checkDisks()
             startClock()
         }
@@ -40,6 +39,23 @@ class StatusScreenController : CoroutineScope {
         if (!logger.checkLogger()) {
             status = Status.ERROR
             println("Логгер не готов!")
+            return
+        }
+
+        status = Status.OK
+        return
+    }
+
+    private fun initAlarm() {
+        if (status != Status.OK) {
+            logger.logln("Нельзя запустить сигнализацию! Статус:$status")
+            return
+        }
+
+        alarm.init()
+        if (alarm.status == Alarm.Status.ERROR) {
+            status = Status.ERROR
+            println("Ошибка инициализации сигнализации: ${alarm.error}")
             return
         }
 
@@ -94,6 +110,7 @@ class StatusScreenController : CoroutineScope {
         if (checker.status == DiskChecker.Status.ERROR) {
             status = Status.ERROR
             logger.logln("Ошибка при проверке хранилища: ${checker.error}")
+            alarm.startAlarm()
             return
         }
 
@@ -134,6 +151,7 @@ class StatusScreenController : CoroutineScope {
         if (checker.status == DiskChecker.Status.ERROR) {
             status = Status.ERROR
             logger.logln("Ошибка при проверке зеркала: ${checker.error}")
+            alarm.startAlarm()
             return
         }
 
@@ -177,6 +195,7 @@ class StatusScreenController : CoroutineScope {
         if (copier.status == Copier.Status.ERROR) {
             status = Status.ERROR
             logger.logln("Ошибка при копировании: ${copier.error}")
+            alarm.startAlarm()
             return
         }
 
@@ -219,6 +238,7 @@ class StatusScreenController : CoroutineScope {
         if (cleaner.status == Cleaner.Status.ERROR) {
             status = Status.ERROR
             logger.logln("Ошибка при очистке! ${cleaner.error}")
+            alarm.startAlarm()
             return
         }
 
@@ -285,6 +305,8 @@ class StatusScreenController : CoroutineScope {
                 "clear" -> launch { clear() }
                 "clock" -> startClock()
                 "stop" -> stopClock()
+                "alarm" -> alarm.startAlarm()
+                "mute" -> alarm.stopAlarm()
                 else -> logger.logln("Неизвестная команда: $input")
             }
         }
