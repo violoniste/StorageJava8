@@ -72,16 +72,24 @@ class StatusScreenController : CoroutineScope {
         logger.logln("Проверка диска хранилища (${GlobalParams.storagePath})...")
 
         val storage = File(GlobalParams.storagePath)
-
-        val checker = DiskChecker(storage)
+        val mirror = File(GlobalParams.mirrorPath)
+        val checker = DiskChecker(storage, mirror)
         checker.checkDisk()
 
         while (true) {
             delay(16)
 
+            val builder = StringBuilder(SCREEN_WIDTH)
+            builder.append('\r')
+            builder.append(getDoubleBarString(BAR_WIDTH, checker.totalProgress, checker.fileProgress))
+            builder.append(" ${checker.checkedFilesCount}/${checker.totalFilesCount}")
+            print(builder.toString())
+
             if (checker.status != DiskChecker.Status.CHECKING)
                 break
         }
+
+        clearString()
 
         if (checker.status == DiskChecker.Status.ERROR) {
             status = Status.ERROR
@@ -91,6 +99,8 @@ class StatusScreenController : CoroutineScope {
 
         val builder = StringBuilder()
         builder.append("Завершено:\n")
+        builder.append("Проверено: ${checker.totalFilesCount}\n")
+        builder.append("Отличаются: ${checker.checkedFilesCount}\n")
         builder.append("${getBarString(BAR_WIDTH, checker.progressOccupiedSpace)}\n")
         builder.append("${sizeToString(checker.usableSpace)} из ${sizeToString(checker.totalSpace)} свободно\n")
         logger.logln(builder.toString())
@@ -101,16 +111,25 @@ class StatusScreenController : CoroutineScope {
     private suspend fun checkMirror() {
         logger.logln("Проверка диска зеркала (${GlobalParams.mirrorPath})...")
 
+        val storage = File(GlobalParams.storagePath)
         val mirror = File(GlobalParams.mirrorPath)
-        val checker = DiskChecker(mirror)
+        val checker = DiskChecker(mirror, storage)
         checker.checkDisk()
 
         while (true) {
             delay(16)
 
+            val builder = StringBuilder(SCREEN_WIDTH)
+            builder.append('\r')
+            builder.append(getDoubleBarString(BAR_WIDTH, checker.totalProgress, checker.fileProgress))
+            builder.append(" ${checker.checkedFilesCount}/${checker.totalFilesCount}")
+            print(builder.toString())
+
             if (checker.status != DiskChecker.Status.CHECKING)
                 break
         }
+
+        clearString()
 
         if (checker.status == DiskChecker.Status.ERROR) {
             status = Status.ERROR
@@ -120,6 +139,8 @@ class StatusScreenController : CoroutineScope {
 
         val builder = StringBuilder()
         builder.append("Завершено:\n")
+        builder.append("Проверено: ${checker.totalFilesCount}\n")
+        builder.append("Отличаются: ${checker.checkedFilesCount}\n")
         builder.append("${getBarString(BAR_WIDTH, checker.progressOccupiedSpace)}\n")
         builder.append("${sizeToString(checker.usableSpace)} из ${sizeToString(checker.totalSpace)} свободно\n")
         logger.logln(builder.toString())

@@ -38,7 +38,6 @@ class Copier : CoroutineScope {
         private set
 
     private var totalFilesSize = 0L
-
     private var approximateStorageSize: Long = 0
 
     fun startCopy() {
